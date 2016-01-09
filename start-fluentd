@@ -1,5 +1,9 @@
 #!/bin/sh
 
+ELASTICSEARCH_TYPE=${ELASTICSEARCH_TYPE:-elasticsearch}
+ELASTICSEARCH_AWS_REGION=${ELASTICSEARCH_AWS_REGION:-'no-region-specified'}
+
+
 ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-es-logging.default.svc}
 ELASTICSEARCH_PORT=${ELASTICSEARCH_PORT:-9200}
 ELASTICSEARCH_SCHEME=${ELASTICSEARCH_SCHEME:-http}
@@ -22,7 +26,7 @@ cat << 'EOF' > /etc/fluent/fluent.conf
 <source>
   type tail
   path /var/log/containers/*.log
-  pos_file /var/log/es-containers.log.pos
+  pos_file /var/log/fluentd-position/es-containers.log.pos
   time_format %Y-%m-%dT%H:%M:%S.%N
   tag kubernetes.*
   format json
@@ -35,15 +39,35 @@ cat << 'EOF' > /etc/fluent/fluent.conf
 </filter>
 
 <match **>
-  type elasticsearch
+EOF
+
+cat << EOF >> /etc/fluent/fluent.conf
+  type ${ELASTICSEARCH_TYPE}
   log_level info
   include_tag_key true
   time_key time
 EOF
 
-cat << EOF >> /etc/fluent/fluent.conf
+if [ ${ELASTICSEARCH_TYPE} == "elasticsearch" ];then
+    cat << EOF >> /etc/fluent/fluent.conf
   host ${ELASTICSEARCH_HOST}
   port ${ELASTICSEARCH_PORT}
+EOF
+elif [ ${ELASTICSEARCH_TYPE} == "aws-elasticsearch-service" ];then
+    cat << EOF >> /etc/fluent/fluent.conf
+  <endpoint>
+    url ${ELASTICSEARCH_HOST}
+    region ${ELASTICSEARCH_AWS_REGION}
+    $([ -n "${ELASTICSEARCH_AWS_ACCESS_KEY}" ] && echo access_key_id ${ELASTICSEARCH_AWS_ACCESS_KEY})
+    $([ -n "${ELASTICSEARCH_AWS_SECRET_KEY}" ] && echo secret_access_key ${ELASTICSEARCH_AWS_SECRET_KEY})
+  </endpoint>
+EOF
+else
+    echo "Unsupported ELASTICSEARCH_TYPE=${ELASTICSEARCH_TYPE}"
+    exit 1
+fi
+
+cat << EOF >> /etc/fluent/fluent.conf
   scheme ${ELASTICSEARCH_SCHEME}
   $([ -n "${ELASTICSEARCH_USER}" ] && echo user ${ELASTICSEARCH_USER})
   $([ -n "${ELASTICSEARCH_PASSWORD}" ] && echo password ${ELASTICSEARCH_PASSWORD})
