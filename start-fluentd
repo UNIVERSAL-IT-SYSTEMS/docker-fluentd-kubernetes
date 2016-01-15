@@ -24,14 +24,13 @@ FLUENTD_LOGSTASH_FORMAT=${FLUENTD_LOGSTASH_FORMAT:-true}
 
 mkdir /etc/fluent
 
-cat << 'EOF' > /etc/fluent/fluent.conf
+cat << EOF > /etc/fluent/fluent.conf
 <source>
   type tail
   path /var/log/containers/*.log
   pos_file /var/log/fluentd-position/es-containers.log.pos
   time_format %Y-%m-%dT%H:%M:%S.%N
   tag kubernetes.*
-  tag cluster.${CLUSTER_NAME}
   format json
   read_from_head true
   keep_time_key true
@@ -39,6 +38,14 @@ cat << 'EOF' > /etc/fluent/fluent.conf
 
 <filter kubernetes.**>
   type kubernetes_metadata
+</filter>
+
+<filter kubernetes.**>
+  type record_transformer
+  <record>
+    cluster ${CLUSTER_NAME}
+    node "#{Socket.gethostname}"
+  </record>
 </filter>
 
 <match **>
