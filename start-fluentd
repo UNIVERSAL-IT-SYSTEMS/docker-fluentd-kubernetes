@@ -1,5 +1,7 @@
 #!/bin/sh
 
+CLUSTER_NAME=${CLUSTER_NAME:-default-cluster-name}
+
 ELASTICSEARCH_TYPE=${ELASTICSEARCH_TYPE:-elasticsearch}
 ELASTICSEARCH_AWS_REGION=${ELASTICSEARCH_AWS_REGION:-'no-region-specified'}
 
@@ -29,6 +31,7 @@ cat << 'EOF' > /etc/fluent/fluent.conf
   pos_file /var/log/fluentd-position/es-containers.log.pos
   time_format %Y-%m-%dT%H:%M:%S.%N
   tag kubernetes.*
+  tag cluster.${CLUSTER_NAME}
   format json
   read_from_head true
   keep_time_key true
