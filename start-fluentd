@@ -44,7 +44,6 @@ cat << EOF > /etc/fluent/fluent.conf
   type record_transformer
   <record>
     cluster ${CLUSTER_NAME}
-    node "#{Socket.gethostname}"
   </record>
 </filter>
 
